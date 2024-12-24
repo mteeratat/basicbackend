@@ -1,7 +1,7 @@
 package model
 
 type Todo struct {
-	ID     int     `json:""`
-	Title  *string `json:"title"`
-	Status *bool   `json:"status"`
+	ID     int
+	Title  *string `json:"title" validate:"required"`
+	Status *bool   `json:"status" validate:"required"`
 }
