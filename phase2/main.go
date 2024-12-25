@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"phase2/auth"
 	"phase2/customError"
 	"phase2/customLog"
 	"phase2/model"
@@ -19,78 +20,79 @@ func main() {
 	count := 0
 	e := echo.New()
 	validator := validator.New()
-	customLog := customLog.NewCustomLogger(customLog.LevelInfo, os.Stdout)
+	logger := customLog.NewCustomLogger(customLog.LevelInfo, os.Stdout)
 
 	// e.Use(middleware.Logger())
+	// e.Use(auth.BasicAuthMiddleware)
 	e.HideBanner = true
 	// e.HidePort = true
 
-	e.GET("/", func(ctx echo.Context) error {
+	e.GET("/", func(c echo.Context) error {
 		msg := "Hello World!"
 		// log.Info(msg)
-		customLog.Info(msg)
-		return ctx.String(http.StatusOK, msg)
+		logger.Info(msg)
+		return c.String(http.StatusOK, msg)
 	})
-	e.POST("/create", func(ctx echo.Context) error {
+	e.POST("/create", func(c echo.Context) error {
 		var req model.Todo
-		if err := ctx.Bind(&req); err != nil {
+		if err := c.Bind(&req); err != nil {
 			msg := "can't bind req"
-			customLog.Error(msg)
-			return ctx.JSON(http.StatusBadRequest, customError.NewMyError(http.StatusBadRequest, msg, err))
+			logger.Error(msg)
+			return c.JSON(http.StatusBadRequest, customError.NewMyError(http.StatusBadRequest, msg))
 		}
 		if err := validator.Struct(req); err != nil {
 			msg := "validate failed"
-			customLog.Error(msg)
-			return ctx.JSON(http.StatusBadRequest, customError.NewMyError(http.StatusBadRequest, msg, err))
+			logger.Error(msg)
+			return c.JSON(http.StatusBadRequest, customError.NewMyError(http.StatusBadRequest, msg))
 		}
 		req.ID = count
 		msg := fmt.Sprintf("Create [%d]: %v %v %v", count, req.ID, *req.Title, *req.Status)
 		// log.Infof(msg)
-		customLog.Info(msg)
+		logger.Info(msg)
 		temp = append(temp, req)
 		count++
-		return ctx.JSON(http.StatusOK, req)
-	})
-	e.GET("/getall", func(ctx echo.Context) error {
+		return c.JSON(http.StatusOK, req)
+	}, auth.BasicAuthMiddleware)
+	e.GET("/getall", func(c echo.Context) error {
 		msg := fmt.Sprintf("Get All : %v", temp)
 		// log.Infof(msg)
-		customLog.Info(msg)
-		return ctx.JSON(http.StatusOK, temp)
+		logger.Info(msg)
+		return c.JSON(http.StatusOK, temp)
 	})
-	e.GET("/get/:id", func(ctx echo.Context) error {
-		id := ctx.Param("id")
+	e.GET("/get/:id", func(c echo.Context) error {
+		id := c.Param("id")
 		index, _ := strconv.Atoi(id)
 		if index >= len(temp) || index < 0 {
 			msg := "id too much"
-			customLog.Error(msg)
-			return ctx.JSON(http.StatusBadRequest, customError.NewMyError(http.StatusBadRequest, msg))
+			logger.Error(msg)
+			return c.JSON(http.StatusBadRequest, customError.NewMyError(http.StatusBadRequest, msg))
 		}
 		msg := fmt.Sprintf("Get [%s] : %v", id, temp[index])
 		// log.Info(msg)
-		customLog.Info(msg)
-		return ctx.JSON(http.StatusOK, temp[index])
+		logger.Info(msg)
+		return c.JSON(http.StatusOK, temp[index])
 	})
-	e.PUT("/update/:id", func(ctx echo.Context) error {
-		id := ctx.Param("id")
+	e.PUT("/update/:id", func(c echo.Context) error {
+		id := c.Param("id")
 		index, _ := strconv.Atoi(id)
 		if index >= len(temp) || index < 0 {
 			msg := "id too much"
-			customLog.Error(msg)
-			return ctx.JSON(http.StatusBadRequest, customError.NewMyError(http.StatusBadRequest, msg))
+			logger.Error(msg)
+			return c.JSON(http.StatusBadRequest, customError.NewMyError(http.StatusBadRequest, msg))
 		}
 		msg := fmt.Sprintf("Update [%s] : %v", id, temp[index])
 		// log.Infof(msg)
-		customLog.Info(msg)
+		logger.Info(msg)
 
 		var req model.Todo
-		if err := ctx.Bind(&req); err != nil {
+		if err := c.Bind(&req); err != nil {
 			msg := "can't bind req"
-			customLog.Error(msg)
-			return ctx.JSON(http.StatusBadRequest, customError.NewMyError(http.StatusBadRequest, msg, err))
+			logger.Error(msg)
+			return c.JSON(http.StatusBadRequest, customError.NewMyError(http.StatusBadRequest, msg))
 		}
 		msg = fmt.Sprintf("Using [%d]: %v", index, req)
 		// log.Info(msg)
-		customLog.Info(msg)
+		logger.Info(msg)
 
 		if req.Title != nil {
 			temp[index].Title = req.Title
@@ -99,21 +101,21 @@ func main() {
 			temp[index].Status = req.Status
 		}
 
-		return ctx.JSON(http.StatusOK, temp[index])
-	})
-	e.DELETE("delete/:id", func(ctx echo.Context) error {
-		id := ctx.Param("id")
+		return c.JSON(http.StatusOK, temp[index])
+	}, auth.BasicAuthMiddleware)
+	e.DELETE("delete/:id", func(c echo.Context) error {
+		id := c.Param("id")
 		index, _ := strconv.Atoi(id)
 		if index >= len(temp) || index < 0 {
 			msg := "id too much"
-			customLog.Error(msg)
-			return ctx.JSON(http.StatusBadRequest, customError.NewMyError(http.StatusBadRequest, msg))
+			logger.Error(msg)
+			return c.JSON(http.StatusBadRequest, customError.NewMyError(http.StatusBadRequest, msg))
 		}
 		msg := fmt.Sprintf("Delete [%s] : %v", id, temp[index])
 		// log.Infof(msg)
-		customLog.Info(msg)
+		logger.Info(msg)
 		temp = append(temp[:index], temp[index+1:]...)
-		return ctx.JSON(http.StatusOK, temp)
-	})
+		return c.JSON(http.StatusOK, temp)
+	}, auth.BasicAuthMiddleware)
 	log.Fatal(e.Start(":8080"))
 }
