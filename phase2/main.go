@@ -9,6 +9,7 @@ import (
 	"phase2/customLog"
 	"phase2/model"
 	"strconv"
+	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
@@ -52,7 +53,7 @@ func main() {
 		temp = append(temp, req)
 		count++
 		return c.JSON(http.StatusOK, req)
-	}, auth.BasicAuthMiddleware)
+	}, auth.JWTMiddleware)
 	e.GET("/getall", func(c echo.Context) error {
 		msg := fmt.Sprintf("Get All : %v", temp)
 		// log.Infof(msg)
@@ -102,8 +103,8 @@ func main() {
 		}
 
 		return c.JSON(http.StatusOK, temp[index])
-	}, auth.BasicAuthMiddleware)
-	e.DELETE("delete/:id", func(c echo.Context) error {
+	}, auth.JWTMiddleware)
+	e.DELETE("/delete/:id", func(c echo.Context) error {
 		id := c.Param("id")
 		index, _ := strconv.Atoi(id)
 		if index >= len(temp) || index < 0 {
@@ -116,6 +117,25 @@ func main() {
 		logger.Info(msg)
 		temp = append(temp[:index], temp[index+1:]...)
 		return c.JSON(http.StatusOK, temp)
+	}, auth.JWTMiddleware)
+	e.POST("/genToken", func(c echo.Context) error {
+		var req model.JWTtoken
+		if err := c.Bind(&req); err != nil {
+			msg := "can't bind req"
+			logger.Error(msg)
+			return c.JSON(http.StatusBadRequest, customError.NewMyError(http.StatusBadRequest, msg))
+		}
+		msg := "Generating JWT token"
+		logger.Info(msg)
+
+		signedToken, expTime, err := auth.GenToken(req.UserID)
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, customError.NewMyError(http.StatusBadRequest, "can't gen JWT"))
+		}
+		msg = fmt.Sprintf("Signed JWT token: %s\nExpired at %s", signedToken, time.Unix(expTime, 0))
+		logger.Info(msg)
+		return c.String(http.StatusOK, msg)
 	}, auth.BasicAuthMiddleware)
+
 	log.Fatal(e.Start(":8080"))
 }

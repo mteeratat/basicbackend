@@ -5,3 +5,7 @@ type Todo struct {
 	Title  *string `json:"title" validate:"required"`
 	Status *bool   `json:"status" validate:"required"`
 }
+
+type JWTtoken struct {
+	UserID int
+}

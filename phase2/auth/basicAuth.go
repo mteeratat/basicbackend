@@ -21,6 +21,7 @@ func BasicAuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		}
 
 		encodedCredentials := strings.TrimPrefix(authHeader, "Basic ")
+
 		decodedCredentials, err := base64.StdEncoding.DecodeString(encodedCredentials)
 		if err != nil {
 			logger.Error("Invalid Authorization header")
